@@ -1,100 +1,66 @@
-$(document).ready(function(){
-
-    var gif = {
-
-      topics: ['Cat','Panda','Dog', 'Monkey', 'Parrot'],
-      getTopicButtons: function() {
-        // display topic buttons
-        gif.topics.forEach(function(index) {
-        var gifButton = $("<button class='animal'>").text(index);
-        $("#item-buttons").append(gifButton);
-        });
-      }
-
-    };
-
-    gif.getTopicButtons();
-
-    $('#images').on('click', '.item img', function() {
-
-      var srcImage = $(this).attr('src');
-      var imgData = $(this).attr('data-still');
-      var gifData = $(this).attr('data-animated');
-
-
-      if(srcImage === imgData ) {
-        $(this).attr('src', gifData);
-      } else {
-        $(this).attr('src', imgData);
-      }
-    });
-
-   $('#add-animal').on('click', function() {
-      event.preventDefault();
-      var submitAnimal = $("#animal-input").val().trim();
-      if (submitAnimal!==""){
-      gif.topics.push(submitAnimal);
-      $('button.animal').remove();
-      gif.getTopicButtons();
-    }
-   });
-
-   $('.container').on('click', '#item-buttons .animal', function() {
-
-        var gifURL;
-        var imgURL;
-        var animal = $(this).text();
-        $('#images .item').remove();
-        
-        // Storing our giphy API URL for a random animal image
-        var queryURL = "https://api.giphy.com/v1/gifs/search?q=" + animal + "&api_key=dc6zaTOxFJmzC&limit=50";
-
-        // Perfoming an AJAX GET request to our queryURL
-        $.ajax({
-          url: queryURL,
-          method: "GET"
-        })
-        // After the data comes back from the API
-        .done(function(response) {
-          // Storing an array of results in the results variable
-          var results = response.data;
-          // Looping over every result item
-          for (var i = 0; i < results.length; i++) {
-
-            // Only taking action if the photo has an appropriate rating
-            if (results[i].rating !== "r" && results[i].rating !== "pg-13") {
-              // Creating a div with the class "item"
-              var gifDiv = $("<div class='item'>");
-
-              // Storing the result item's rating
-              var rating = results[i].rating;
-
-
-              // Creating a paragraph tag with the result item's rating
-              var p = $("<p>").text("Rating: " + rating);
-
-              imgURL = response.data[i].images.fixed_height_still.url;
-              gifURL = response.data[i].images.fixed_height.url;
-
-              // Creating an image tag
-              var animalImage = $("<img>");
-
-              animalImage.attr('data-animated', gifURL);
-              animalImage.attr('data-still', imgURL);
-
-              // Giving the image tag an src attribute of a proprty pulled off the
-              // result item
-              animalImage.attr("src", imgURL);
-
-              // Appending the paragraph and personImage we created to the "gifDiv" div we created
-              gifDiv.append(p);
-              gifDiv.append(animalImage);
-
-              // Prepending the gifDiv to the "#gifs-appear-here" div in the HTML
-              $("#images").prepend(gifDiv);
-            }
-          }
-        });
-
-      });
-  });
+var config = {
+    apiKey: "AIzaSyAqQU-O5ExpPqyyjJqpmpqPrp7tb_72NTU",
+    authDomain: "cool-project-383e7.firebaseapp.com",
+    databaseURL: "https://cool-project-383e7.firebaseio.com",
+    storageBucket: "cool-project-383e7.appspot.com",
+    messagingSenderId: "136454220232"
+  };
+  firebase.initializeApp(config);
+var trainData = firebase.database();
+// 2. Populate Firebase Database with initial data (in this case, I did this via Firebase GUI)
+// 3. Button for adding trains
+$("#add-train-btn").on("click", function() {
+  // Grabs user input
+  var trainName = $("#train-name-input").val().trim();
+  var destination = $("#destination-input").val().trim();
+  var firstTrainUnix = moment($("#first-train-input").val().trim(), "HH:mm").subtract(10, "years").format("X");
+  var frequency = $("#frequency-input").val().trim();
+  // Creates local "temporary" object for holding train data
+  var newTrain = {
+    name: trainName,
+    destination: destination,
+    firstTrain: firstTrainUnix,
+    frequency: frequency
+  };
+  // Uploads train data to the database
+  trainData.ref().push(newTrain);
+  // Logs everything to console
+  console.log(newTrain.name);
+  console.log(newTrain.destination);
+  console.log(firstTrainUnix);
+  console.log(newTrain.frequency);
+  // Alert
+  alert("Train successfully added");
+  // Clears all of the text-boxes
+  $("#train-name-input").val("");
+  $("#destination-input").val("");
+  $("#first-train-input").val("");
+  $("#frequency-input").val("");
+  // Determine when the next train arrives.
+  return false;
+});
+// 4. Create Firebase event for adding trains to the database and a row in the html when a user adds an entry
+trainData.ref().on("child_added", function(childSnapshot, prevChildKey) {
+  console.log(childSnapshot.val());
+  // Store everything into a variable.
+  var tName = childSnapshot.val().name;
+  var tDestination = childSnapshot.val().destination;
+  var tFrequency = childSnapshot.val().frequency;
+  var tFirstTrain = childSnapshot.val().firstTrain;
+  // Calculate the minutes until arrival using hardcore math
+  // To calculate the minutes till arrival, take the current time in unix subtract the FirstTrain time
+  // and find the modulus between the difference and the frequency.
+  var differenceTimes = moment().diff(moment.unix(tFirstTrain), "minutes");
+  var tRemainder = moment().diff(moment.unix(tFirstTrain), "minutes") % tFrequency;
+  var tMinutes = tFrequency - tRemainder;
+  // To calculate the arrival time, add the tMinutes to the currrent time
+  var tArrival = moment().add(tMinutes, "m").format("hh:mm A");
+  console.log(tMinutes);
+  console.log(tArrival);
+  console.log(moment().format("hh:mm A"));
+  console.log(tArrival);
+  console.log(moment().format("X"));
+  // Add each train's data into the table
+  $("#train-table > tbody").append("<tr><td>" + tName + "</td><td>" + tDestination + "</td><td>"
+  + tFrequency + "</td><td>" + tArrival + "</td><td>" + tMinutes + "</td></tr>");
+});
